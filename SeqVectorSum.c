@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
 #include <time.h>
 #define SIZE 1000000
-
-double omp_get_wtime(void);
 
 int *randomVector()
 {
@@ -34,38 +31,21 @@ int main()
   double start;
   double end;
   int *vector1 = randomVector();
+  printf("Vector 1 generated\n");
   int *vector2 = randomVector();
+  printf("Vector 2 generated\n");
   // printVector(vector1);
   // printVector(vector2);
   int result[SIZE];
-  int i = 0;
 
-  start = omp_get_wtime();
-#pragma omp parallel for num_threads(4)
-  for (i = omp_get_thread_num(); i < SIZE; i = i + 4)
+  for (int i = 0; i < SIZE; i++)
   {
     // int tid = omp_get_thread_num();
     // printf("Hello World... from thread  %d !\n", tid);
     result[i] = vector1[i] + vector2[i];
   }
-  end = omp_get_wtime();
-
+  printf("Vector Sum generated\n");
   // printf("Resultant Vector: \n");
   // printVector(result);
-  printf("Time taken to execute in seconds : %f \n", end - start);
-
-  start = omp_get_wtime();
-#pragma omp parallel for num_threads(4)
-  for (i = omp_get_thread_num(); i < SIZE; i = i + 4)
-  {
-    // int tid = omp_get_thread_num();
-    // printf("Hello World... from thread  %d !\n", tid);
-    result[i] = vector1[i] + vector2[i];
-  }
-  end = omp_get_wtime();
-
-  // printf("Resultant Vector: \n");
-  // printVector(result);
-  printf("Time taken to execute in seconds : %f \n", end - start);
   return 0;
 }
