@@ -1,27 +1,34 @@
 #include <stdio.h>
-#include <omp.h>
-// Global variable declared as threadprivate
-int x;
-// Declare a threadprivate variable
-#pragma omp threadprivate(x)
+#include <time.h>
+int m[999][999];
+//Taking both dimensions same so that while running the loops,
+//number of operations (comparisons, iterations, initializations)
+//are exactly the same. Refer this for more
+// https://www.geeksforgeeks.org/a-nested-loop-puzzle/
 
-int main()
+void main()
+
 {
-    // Initialize the threadprivate variable with the thread number
-    x = 0;
+	int i, j;
+	clock_t start, stop;
+	double d = 0.0;
 
-#pragma omp parallel num_threads(4)
-    {
-        int thread_id = omp_get_thread_num();
-        // Each thread will have its own copy of x
-        // The value of x will be specific to each thread
-        x = thread_id + 1;
-        printf("Thread %d: x = %d\n", thread_id, x);
-    }
+	start = clock();
+	for (i = 0; i < 999; i++)
+		for (j = 0; j < 999; j++)
+			m[i][j] = m[i][j] + (m[i][j] * m[i][j]);
 
-    // The value of x outside the parallel region will be the value of the last thread's copy
-    // In this case, it will be the value of x from the last thread (thread 0) that executed the parallel region.
-    printf("Value of x after the parallel region: %d\n", x);
+	stop = clock();
+	d = (double)(stop - start) / CLOCKS_PER_SEC;
+	printf("The run-time of row major order is %lf\n", d);
 
-    return 0;
+	start = clock();
+	for (j = 0; j < 999; j++)
+		for (i = 0; i < 999; i++)
+			m[i][j] = m[i][j] + (m[i][j] * m[i][j]);
+
+	stop = clock();
+	d = (double)(stop - start) / CLOCKS_PER_SEC;
+	printf("The run-time of column major order is %lf", d);
 }
+
