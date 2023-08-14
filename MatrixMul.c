@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <time.h>
-#define SIZE 10
+#define SIZE 2000
 
 int **randomMatrix()
 {
@@ -51,11 +51,13 @@ int main()
         product[i] = (int *)malloc(SIZE * sizeof(int));
         for (j = 0; j < SIZE; j++)
         {
-            product[i][j] = 0;
+            int sum = 0;
+#pragma omp parallel for reduction(+ : sum)
             for (k = 0; k < SIZE; k++)
             {
-                product[i][j] += matrix1[i][k] * matrix2[k][j];
+                sum += matrix1[i][k] * matrix2[k][j];
             }
+            product[i][j] = sum;
         }
     }
     printf("\nProduct of Matrices:");
