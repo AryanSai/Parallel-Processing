@@ -1,29 +1,105 @@
+// // #include <stdio.h>
+// // int main()
+// // {
+// //     int matrix[3][3] = {{0, 9, 8}, {1, 4, 2}, {3, 6, 8}};
+// //     int i = 1, j = 2;
+// //     int nbrs[8];
+// //     // printf("%d", *matrix[i, j]);
+// //     nbrs[1] = *matrix[i, j];
+// //     printf("%d", nbrs[1]);
+// // }
+
+
+
+// // // int getNeighbors(int **grid, int i, int j)
+// // // {
+// // //     int count = grid[i - 1][j - 1] + grid[i - 1][j] + grid[i - 1][j + 1] + grid[i][j - 1] + grid[i][j + 1] + grid[i + 1][j - 1] + grid[i + 1][j] + grid[i + 1][j + 1];
+// // //     return count;
+// // // }
+
+// void main()
+// {
+//     srand(time(0));
+//     int i = 2, j = 0;
+
+//     // create the grid
+//     int **grid = randomGrid();
+//     int **newGrid = (int **)malloc(N * sizeof(int *)); // New grid to store the next state
+
+//     for (int i = 0; i < N; i++)
+//     {
+//         newGrid[i] = (int *)malloc(N * sizeof(int));
+//     }
+
+//     printGrid(grid);
+
+// #pragma omp parallel for num_threads(9)
+//     for (int i = 0; i < N; i++)
+//     {
+//         for (int j = 0; j < N; j++)
+//         {
+//             gameOfLife(grid, newGrid, i, j); // Pass the newGrid to store next state
+//         }
+//     }
+
+//     // Update the original grid with the new state
+//     for (int i = 0; i < N; i++)
+//     {
+//         for (int j = 0; j < N; j++)
+//         {
+//             grid[i][j] = newGrid[i][j];
+//         }
+//     }
+
+//     // Free the memory used by newGrid
+//     for (int i = 0; i < N; i++)
+//     {
+//         free(newGrid[i]);
+//     }
+//     free(newGrid);
+
+//     printf("New grid: ");
+//     printGrid(grid);
+// }
+
+// void gameOfLife(int **grid, int **newGrid, int i, int j)
+// {
+//     int count = nbrSum(grid, i, j);
+    
+//     if (grid[i][j] == 1) // if 1 -- live cell
+//     {
+//         if (count < 2 || count > 3)
+//         {
+//             newGrid[i][j] = 0;
+//         }
+//         else
+//         {
+//             newGrid[i][j] = 1;
+//         }
+//     }
+//     else // if 0 -- dead cell
+//     {
+//         if (count == 3)
+//         {
+//             newGrid[i][j] = 1;
+//         }
+//         else
+//         {
+//             newGrid[i][j] = 0;
+//         }
+//     }
+// }
 #include <stdio.h>
-#include <time.h>
-void main()
+#include <omp.h>
 
-{
-	int i, j;
-	int m[999][999];
-	clock_t start, stop;
-	double d = 0.0;
+int main() {
+    #pragma omp parallel num_threads(4)
+    {
+        int thread_id = omp_get_thread_num();
+        printf("Thread %d before the barrier.\n", thread_id);
+        #pragma omp barrier
+        printf("Thread %d after the barrier.\n", thread_id);
+    }
 
-	start = clock();
-	for (i = 0; i < 999; i++)
-		for (j = 0; j < 999; j++)
-			m[i][j] = m[i][j] + (m[i][j] * m[i][j]);
-
-	stop = clock();
-	d = (double)(stop - start) / CLOCKS_PER_SEC;
-	printf("The run-time of row major order is %lf\n", d);
-
-	int n[999][999];
-	start = clock();
-	for (j = 0; j < 999; j++)
-		for (i = 0; i < 999; i++)
-			n[i][j] = n[i][j] + (n[i][j] * n[i][j]);
-
-	stop = clock();
-	d = (double)(stop - start) / CLOCKS_PER_SEC;
-	printf("The run-time of column major order is %lf", d);
+    return 0;
 }
