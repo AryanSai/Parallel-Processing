@@ -1,5 +1,5 @@
-// Game of Life Program
-// Aryan Sai Arvapelly   Reg.No. 23352   I MTech(CS)
+//Game of Life Program
+//Aryan Sai Arvapelly   Reg.No. 23352   I MTech(CS)
 
 // import the necessary libraries
 #include <stdio.h>
@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 // defining the dimensions of the grid as macros
-#define N 1000
+#define N 30
 #define DELAY 500000
 
 // function to print the grid
@@ -98,7 +98,6 @@ int main()
     int i = 0, j = 0;
     clock_t start, stop;
     double d = 0.0;
-
     // create the grid
     int **grid = randomGrid();
     printGrid(grid);
@@ -109,31 +108,18 @@ int main()
     {
         newGrid[i] = (int *)malloc(N * sizeof(int));
     }
-
+    
     start = clock();
-    int saturation = 0, threshold = 0;
-    while (saturation == 0 && threshold < 100)
+    int k = 0;
+    while (k < 100)
     {
-        int changes = 0; // Initialize the changes flag for this iteration
-
-#pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(16)
+#pragma omp parallel for schedule(dynamic, 10) collapse(2)
         for (int i = 0; i < N; i++)
         {
             for (int j = 0; j < N; j++)
             {
                 gameOfLife(grid, newGrid, i, j);
-
-                // Check if the cell's state changed
-                if (grid[i][j] != newGrid[i][j])
-                {
-                    changes = 1;
-                }
             }
-        }
-
-        if (changes == 0)
-        {
-            saturation = 1; // No changes occurred, simulation is saturated
         }
 
         // Update the original grid with the new state
@@ -144,16 +130,11 @@ int main()
                 grid[i][j] = newGrid[i][j];
             }
         }
-        threshold++;
+        k++;
         system("clear"); // Clear the terminal
         printf("---Game of Life---");
         printGrid(grid);
         usleep(DELAY);
     }
-    stop = clock();
-    d = (double)(stop - start) / CLOCKS_PER_SEC;
-    printf("The run-time is %lf\n", d);
-
-    printf("---Game Ended---");
     return 0;
 }
