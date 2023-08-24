@@ -3,12 +3,13 @@
 
 // import the necessary libraries
 #include <stdio.h>
+#include <omp.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
 
 // defining the dimensions of the grid as macros
-#define N 1000
+#define N 2000
 #define DELAY 500000
 
 // function to print the grid
@@ -29,7 +30,7 @@ void printGrid(int **grid)
 int **randomGrid()
 {
     int **grid = (int **)malloc(N * sizeof(int *));
-#pragma omp parallel
+#pragma omp parallel num_threads(16)
     for (int i = 0; i < N; i++)
     {
         grid[i] = (int *)malloc(N * sizeof(int));
@@ -47,7 +48,7 @@ int **randomGrid()
 int nbrSum(int **grid, int i, int j)
 {
     int sum = 0, row, col;
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) num_threads(16)
     for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
     {
         for (int colOffset = -1; colOffset <= 1; colOffset++)
@@ -96,8 +97,8 @@ int main()
 {
     srand(time(0));
     int i = 0, j = 0;
-    clock_t start, stop;
-    double d = 0.0;
+    double start;
+    double end;
 
     // create the grid
     int **grid = randomGrid();
@@ -110,7 +111,7 @@ int main()
         newGrid[i] = (int *)malloc(N * sizeof(int));
     }
 
-    start = clock();
+    start = omp_get_wtime();
     int saturation = 0, threshold = 0;
     while (saturation == 0 && threshold < 100)
     {
@@ -150,9 +151,8 @@ int main()
         printGrid(grid);
         usleep(DELAY);
     }
-    stop = clock();
-    d = (double)(stop - start) / CLOCKS_PER_SEC;
-    printf("The run-time is %lf\n", d);
+    end = omp_get_wtime();
+    printf("The run-time is %lf\n", end - start);
 
     printf("---Game Ended---");
     return 0;
