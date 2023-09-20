@@ -89,17 +89,17 @@
 //         }
 //     }
 // }
-#include <stdio.h>
-#include <omp.h>
+// #include <stdio.h>
+// #include <omp.h>
 
-int main() {
-    #pragma omp parallel num_threads(4)
-    {
-        int thread_id = omp_get_thread_num();
-        printf("Thread %d before the barrier.\n", thread_id);
-        #pragma omp barrier
-        printf("Thread %d after the barrier.\n", thread_id);
-    }
+// int main() {
+//     #pragma omp parallel num_threads(4)
+//     {
+//         int thread_id = omp_get_thread_num();
+//         printf("Thread %d before the barrier.\n", thread_id);
+//         #pragma omp barrier
+//         printf("Thread %d after the barrier.\n", thread_id);
+//     }
 
-    return 0;
-}
+//     return 0;
+// }

@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 // defining the dimensions of the grid as macros
-#define N 2000
+#define N 10
 #define DELAY 500000
 
 // function to print the grid
@@ -30,7 +30,7 @@ void printGrid(int **grid)
 int **randomGrid()
 {
     int **grid = (int **)malloc(N * sizeof(int *));
-#pragma omp parallel num_threads(16)
+#pragma omp parallel num_threads(8)
     for (int i = 0; i < N; i++)
     {
         grid[i] = (int *)malloc(N * sizeof(int));
@@ -48,7 +48,7 @@ int **randomGrid()
 int nbrSum(int **grid, int i, int j)
 {
     int sum = 0, row, col;
-#pragma omp parallel for collapse(2) num_threads(16)
+#pragma omp parallel for collapse(2) num_threads(8)
     for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
     {
         for (int colOffset = -1; colOffset <= 1; colOffset++)
@@ -117,7 +117,7 @@ int main()
     {
         int changes = 0; // Initialize the changes flag for this iteration
 
-#pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(16)
+#pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(8)
         for (int i = 0; i < N; i++)
         {
             for (int j = 0; j < N; j++)
