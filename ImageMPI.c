@@ -112,8 +112,6 @@ uint8_t *reconstructImage(int num_rows, int num_cols, int small_width, int small
         reconstructedImageData[i] = 0;
     }
 
-    printf("%d\n", num_cols);
-    printf("%d\n", num_rows);
     // Iterate through the broken images and copy their data to the reconstructed image
     for (int j = num_cols - 1; j >= 0; j--)
     {
@@ -248,7 +246,7 @@ int main()
     int height = *((int *)&bmpHeader[22]);
 
     // The size is calculated as width x height x 3 since it's assumed that the image is in 24-bit color format (3 bytes per pixel)
-    //  Calculate total image size in bytes
+    // Calculate total image size in bytes
     int imageSize = width * height * 3;
 
     // Read image data
@@ -269,9 +267,6 @@ int main()
         free(imageData);
         return 1;
     }
-
-    // After reading the BMP image data, it closes the input file.
-    fclose(inputImage);
 
     int num_rows = 2; // Number of rows for the grid
     int num_cols = 2; // Number of columns for the grid
@@ -304,6 +299,9 @@ int main()
 
     free(imageData);
 
+    // send these images to different processes
+    // receive them back
+
     // Reconstruct the original image
     uint8_t *reconstructedImageData = reconstructImage(num_rows, num_cols, small_width, small_height);
 
@@ -320,5 +318,8 @@ int main()
         // Free the memory allocated for the reconstructed image
         free(reconstructedImageData);
     }
+
+    // After reading the BMP image data, it closes the input file.
+    fclose(inputImage);
     return 0;
 }

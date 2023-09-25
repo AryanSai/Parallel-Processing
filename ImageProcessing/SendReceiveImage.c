@@ -1,3 +1,4 @@
+// mpirun -np 2 ./a.out image.bmp
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,13 +38,15 @@ int main(int argc, char **argv)
     fread(file_data, 1, file_size, input_file);
     fclose(input_file);
 
+    // MPI_Send(void* data,int count,MPI_Datatype datatype,int destination,int tag, MPI_Comm communicator)
+
     // Send the file data from the sender process to the receiver process
     if (world_rank == 0)
     {
         // Sender process
-        MPI_Send(file_data, file_size, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+        MPI_Send(file_data, file_size, MPI_CHAR, 3, 0, MPI_COMM_WORLD);
     }
-    else if (world_rank == 1)
+    else if (world_rank == 3)
     {
         // Receiver process
         char *received_data = (char *)malloc(file_size);
