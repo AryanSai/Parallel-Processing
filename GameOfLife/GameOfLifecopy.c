@@ -107,8 +107,9 @@ int main(int argc, char *argv[])
     int threads = atoi(argv[2]);
 
     srand(time(0));
-    double start, end;
+    double start, end, total = 0.0, startt, endd, start1, end1;
 
+    start = omp_get_wtime();
     // create the grid
     int **grid = randomGrid(N, threads);
     int **newGrid = (int **)malloc(N * sizeof(int *)); // New grid to store the next state
@@ -118,19 +119,20 @@ int main(int argc, char *argv[])
         newGrid[i] = (int *)malloc(N * sizeof(int));
     }
 
-    start = omp_get_wtime();
     int saturation = 0, threshold = 0;
+    start1 = omp_get_wtime();
     while (saturation == 0 && threshold < 100)
     {
         int changes = 0; // Initialize the changes flag for this iteration
-
 #pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(threads)
         for (int i = 0; i < N; i++)
         {
             for (int j = 0; j < N; j++)
             {
+                startt = omp_get_wtime();
                 gameOfLife(grid, newGrid, N, threads, i, j);
-
+                endd = omp_get_wtime();
+                total += (endd - startt);
                 // Check if the cell's state changed
                 if (grid[i][j] != newGrid[i][j])
                 {
@@ -143,7 +145,6 @@ int main(int argc, char *argv[])
         {
             saturation = 1; // No changes occurred, simulation is saturated
         }
-
         // Update the original grid with the new state
         for (int i = 0; i < N; i++)
         {
@@ -154,11 +155,14 @@ int main(int argc, char *argv[])
         }
         threshold++;
         system("clear"); // Clear the terminal
-        printf("---Game of Life---");
-        printGrid(grid, N);
+        // printf("---Game of Life---");
+        // printGrid(grid, N);
         usleep(50000);
     }
+    end1 = omp_get_wtime();
     end = omp_get_wtime();
+    printf("The updation run-time is %lf\n", end1 - start1);
+    printf("The parallel run-time is %lf\n", total);
     printf("The run-time is %lf\n", end - start);
     printf("---Game Ended---");
 

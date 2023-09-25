@@ -1,10 +1,16 @@
+// Game of Life Program
+// Aryan Sai Arvapelly   Reg.No. 23352   I MTech(CS)
+
 // import the necessary libraries
 #include <stdio.h>
+#include <omp.h>
 #include <time.h>
+#include <unistd.h>
 #include <stdlib.h>
 
 // defining the dimensions of the grid as macros
-#define N 3
+#define N 50
+#define DELAY 500000
 
 // function to print the grid
 void printGrid(int **grid)
@@ -24,7 +30,7 @@ void printGrid(int **grid)
 int **randomGrid()
 {
     int **grid = (int **)malloc(N * sizeof(int *));
-
+#pragma omp parallel num_threads(4)
     for (int i = 0; i < N; i++)
     {
         grid[i] = (int *)malloc(N * sizeof(int));
@@ -42,6 +48,7 @@ int **randomGrid()
 int nbrSum(int **grid, int i, int j)
 {
     int sum = 0, row, col;
+#pragma omp parallel for collapse(2) num_threads(4)
     for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
     {
         for (int colOffset = -1; colOffset <= 1; colOffset++)
@@ -58,52 +65,101 @@ int nbrSum(int **grid, int i, int j)
     return sum;
 }
 
-void gameOfLife(int **grid, int i, int j)
+int gameOfLife(int **grid, int **Newgrid, int i, int j)
 {
     int count = nbrSum(grid, i, j);
-
+#pragma omp critical
     if (grid[i][j] == 1) // if 1 -- live cell
     {
         if (count < 2 || count > 3)
         {
-            grid[i][j] = 0;
+            Newgrid[i][j] = 0;
         }
         else
         {
-            grid[i][j] = 1;
+            Newgrid[i][j] = 1;
         }
     }
     else // if 0 -- dead cell
     {
         if (count == 3)
         {
-            grid[i][j] = 1;
+            Newgrid[i][j] = 1;
         }
         else
         {
-            grid[i][j] = 0;
+            Newgrid[i][j] = 0;
         }
     }
 }
 
-void main()
+int main()
 {
     srand(time(0));
-    int i = 2, j = 0;
+    int i = 0, j = 0;
+    double start, end, total, startt, endd;
 
     // create the grid
     int **grid = randomGrid();
     printGrid(grid);
 
-#pragma omp parallel for num_threads(9)
+    int **newGrid = (int **)malloc(N * sizeof(int *)); // New grid to store the next state
+
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++)
-        {
-            gameOfLife(grid, i, j);
-        }
+        newGrid[i] = (int *)malloc(N * sizeof(int));
     }
+    startt = omp_get_wtime();
 
-    printf("New grid: ");
-    printGrid(grid);
+    int saturation = 0, threshold = 0;
+    while (saturation == 0 && threshold < 100)
+    {
+        int changes = 0; // Initialize the changes flag for this iteration
+        start = omp_get_wtime();
+#pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(4)
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                gameOfLife(grid, newGrid, i, j);
+
+                // Check if the cell's state changed
+                if (grid[i][j] != newGrid[i][j])
+                {
+                    changes = 1;
+                }
+            }
+        }
+        end = omp_get_wtime();
+        total += (end - start);
+        if (changes == 0)
+        {
+            saturation = 1; // No changes occurred, simulation is saturated
+        }
+
+        // Update the original grid with the new state
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                grid[i][j] = newGrid[i][j];
+            }
+        }
+        threshold++;
+        system("clear"); // Clear the terminal
+        // printf("---Game of Life---");
+        // printGrid(grid);
+        usleep(DELAY);
+    }
+    endd = omp_get_wtime();
+
+    printf("The Parallel run-time is %lf\n", total);
+    printf("The Total run-time is %lf\n", endd - startt);
+
+    printf("---Game Ended---");
+    return 0;
 }
+
+
+// The Parallel run-time is 0.672369
+// The Total run-time is 50.872211

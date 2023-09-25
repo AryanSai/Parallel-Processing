@@ -1,105 +1,66 @@
-// // #include <stdio.h>
-// // int main()
-// // {
-// //     int matrix[3][3] = {{0, 9, 8}, {1, 4, 2}, {3, 6, 8}};
-// //     int i = 1, j = 2;
-// //     int nbrs[8];
-// //     // printf("%d", *matrix[i, j]);
-// //     nbrs[1] = *matrix[i, j];
-// //     printf("%d", nbrs[1]);
-// // }
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+int main(int argc, char **argv)
+{
+    // Initialize the MPI environment
+    MPI_Init(NULL, NULL);
 
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-// // // int getNeighbors(int **grid, int i, int j)
-// // // {
-// // //     int count = grid[i - 1][j - 1] + grid[i - 1][j] + grid[i - 1][j + 1] + grid[i][j - 1] + grid[i][j + 1] + grid[i + 1][j - 1] + grid[i + 1][j] + grid[i + 1][j + 1];
-// // //     return count;
-// // // }
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <input_bmp_file>\n", argv[0]);
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
 
-// void main()
-// {
-//     srand(time(0));
-//     int i = 2, j = 0;
+    const char *input_file_name = argv[1];
+    FILE *input_file = fopen(input_file_name, "rb");
 
-//     // create the grid
-//     int **grid = randomGrid();
-//     int **newGrid = (int **)malloc(N * sizeof(int *)); // New grid to store the next state
+    if (!input_file)
+    {
+        fprintf(stderr, "Error opening input BMP file.\n");
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
 
-//     for (int i = 0; i < N; i++)
-//     {
-//         newGrid[i] = (int *)malloc(N * sizeof(int));
-//     }
+    // Determine the size of the BMP file
+    fseek(input_file, 0, SEEK_END);
+    long file_size = ftell(input_file);
+    fseek(input_file, 0, SEEK_SET);
 
-//     printGrid(grid);
+    // Allocate a buffer to store the file data
+    char *file_data = (char *)malloc(file_size);
 
-// #pragma omp parallel for num_threads(9)
-//     for (int i = 0; i < N; i++)
-//     {
-//         for (int j = 0; j < N; j++)
-//         {
-//             gameOfLife(grid, newGrid, i, j); // Pass the newGrid to store next state
-//         }
-//     }
+    // Read the file data into the buffer
+    fread(file_data, 1, file_size, input_file);
+    fclose(input_file);
 
-//     // Update the original grid with the new state
-//     for (int i = 0; i < N; i++)
-//     {
-//         for (int j = 0; j < N; j++)
-//         {
-//             grid[i][j] = newGrid[i][j];
-//         }
-//     }
+    // Send the file data from the sender process to the receiver process
+    if (world_rank == 0)
+    {
+        // Sender process
+        MPI_Send(file_data, file_size, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+    }
+    else if (world_rank == 1)
+    {
+        // Receiver process
+        char *received_data = (char *)malloc(file_size);
+        MPI_Recv(received_data, file_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-//     // Free the memory used by newGrid
-//     for (int i = 0; i < N; i++)
-//     {
-//         free(newGrid[i]);
-//     }
-//     free(newGrid);
+        // Write the received data to a new BMP file
+        FILE *output_file = fopen("received.bmp", "wb");
+        fwrite(received_data, 1, file_size, output_file);
+        fclose(output_file);
 
-//     printf("New grid: ");
-//     printGrid(grid);
-// }
+        free(received_data);
+    }
 
-// void gameOfLife(int **grid, int **newGrid, int i, int j)
-// {
-//     int count = nbrSum(grid, i, j);
-    
-//     if (grid[i][j] == 1) // if 1 -- live cell
-//     {
-//         if (count < 2 || count > 3)
-//         {
-//             newGrid[i][j] = 0;
-//         }
-//         else
-//         {
-//             newGrid[i][j] = 1;
-//         }
-//     }
-//     else // if 0 -- dead cell
-//     {
-//         if (count == 3)
-//         {
-//             newGrid[i][j] = 1;
-//         }
-//         else
-//         {
-//             newGrid[i][j] = 0;
-//         }
-//     }
-// }
-// #include <stdio.h>
-// #include <omp.h>
+    free(file_data);
 
-// int main() {
-//     #pragma omp parallel num_threads(4)
-//     {
-//         int thread_id = omp_get_thread_num();
-//         printf("Thread %d before the barrier.\n", thread_id);
-//         #pragma omp barrier
-//         printf("Thread %d after the barrier.\n", thread_id);
-//     }
+    // Finalize MPI
+    MPI_Finalize();
 
-//     return 0;
-// }
+    return 0;
+}
