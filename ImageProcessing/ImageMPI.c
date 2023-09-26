@@ -1,24 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h> //working with integer types
+#include <mpi.h>
+#include <string.h>
+
+#define ROWS 2
+#define COLS 2
+
+long file_size;
+
+struct Image
+{
+    int width;
+    int height;
+    int size;
+    uint8_t *imageData;
+};
 
 // This function is responsible for saving a portion of the original image as a new BMP file.
-
-// It takes the following parameters:
-// imageData: A pointer to the image data (pixel values) of the original image.
-// width and height: The width and height of the original image.
-// x and y: The coordinates of the top-left corner of the portion to be saved.
-// subWidth and subHeight: The width and height of the portion to be saved.
-// filename: The name of the BMP file to be created.
-
-// Inside the function:
-// open a new BMP file for writing.
-// constructs the BMP file headers (bmpHeader and bmpInfoHeader) based on the BMP file format specifications.
-// calculates the padding needed for each row to ensure the total row size is a multiple of 4 bytes (required by BMP format).
-// updates the header fields with the appropriate values (e.g., file size, image dimensions).
-// writes the headers to the new BMP file.
-// writes the image data for the specified portion to the file, ensuring proper padding for each row.
-// Finally, it closes the output file.
 void saveSubImage(uint8_t *imageData, int width, int height, int x, int y, int subWidth, int subHeight, const char *filename)
 {
     FILE *outputImage = fopen(filename, "wb");
@@ -27,12 +26,6 @@ void saveSubImage(uint8_t *imageData, int width, int height, int x, int y, int s
         printf("Error opening %s for writing.\n", filename);
         return;
     }
-
-    // BMP header (14 bytes)
-    // The first two bytes ('B' and 'M') of the BMP file indicate the file type and serve as a signature.
-    // The next four bytes (at offsets 18 to 21) represent the width of the image in pixels.
-    // The next four bytes (at offsets 22 to 25) represent the height of the image in pixels.
-    // The 54th byte (at offset 53) represents the offset to the image data in the file.
 
     uint8_t bmpHeader[14] = {
         0x42, 0x4D, // "BM" identifier
@@ -86,75 +79,6 @@ void saveSubImage(uint8_t *imageData, int width, int height, int x, int y, int s
     }
 
     fclose(outputImage);
-}
-
-uint8_t *reconstructImage(int num_rows, int num_cols, int small_width, int small_height)
-{
-    // Calculate the dimensions of the original image
-    int width = num_cols * small_width;
-    int height = num_rows * small_height;
-
-    // Calculate the total image size in bytes
-    int imageSize = width * height * 3; // Assuming 24-bit color (3 bytes per pixel)
-
-    // Allocate memory for the reconstructed image
-    uint8_t *reconstructedImageData = (uint8_t *)malloc(imageSize);
-
-    if (reconstructedImageData == NULL)
-    {
-        printf("Memory allocation error for reconstructed image.\n");
-        return NULL;
-    }
-
-    // Initialize the reconstructed image to all zeros
-    for (int i = 0; i < imageSize; i++)
-    {
-        reconstructedImageData[i] = 0;
-    }
-
-    // Iterate through the broken images and copy their data to the reconstructed image
-    for (int j = num_cols - 1; j >= 0; j--)
-    {
-        for (int i = num_rows - 1; i >= 0; i--)
-        {
-            // Calculate the coordinates for the top-left corner of the small image
-            int x = i * small_width;
-            int y = j * small_height;
-
-            // Generate the filename for the broken image
-            char filename[100];
-            snprintf(filename, sizeof(filename), "output_%d_%d.bmp", j, i);
-
-            // Open the broken image file for reading
-            FILE *brokenImage = fopen(filename, "rb");
-            if (brokenImage == NULL)
-            {
-                printf("Error opening %s for reading.\n", filename);
-                free(reconstructedImageData);
-                return NULL;
-            }
-
-            // Skip the BMP header (first 54 bytes)
-            fseek(brokenImage, 54, SEEK_SET);
-
-            // Read and copy the pixel data from the broken image to the reconstructed image row by row
-            for (int h = 0; h < small_height; h++)
-            {
-                fread(reconstructedImageData + ((y + h) * width + x) * 3, 1, small_width * 3, brokenImage);
-
-                // Pad rows to be multiples of 4 bytes in the broken image
-                for (int pad = 0; pad < (4 - (small_width * 3) % 4) % 4; pad++)
-                {
-                    fgetc(brokenImage);
-                }
-            }
-
-            // Close the broken image file
-            fclose(brokenImage);
-        }
-    }
-
-    return reconstructedImageData;
 }
 
 // Function to save an image as a BMP file
@@ -222,65 +146,76 @@ void saveImageAsBMP(uint8_t *imageData, int width, int height, const char *filen
     fclose(outputImage);
 }
 
-int main()
+void receiveImagebyProcesses()
 {
+    // Receiver process
+    MPI_Status status;
+    char received_filename[100]; // Receive the file name
+    MPI_Recv(received_filename, sizeof(received_filename), MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
+
+    MPI_Recv(&file_size, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD, &status); // Receive the file size
+
+    char *received_data = (char *)malloc(file_size); // Receive the file data
+    MPI_Recv(received_data, file_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    // Write the received data to a new BMP file with the received file name
+    FILE *output_file = fopen(received_filename, "wb");
+    fwrite(received_data, 1, file_size, output_file);
+    fclose(output_file);
+
+    free(received_data);
+}
+
+struct Image readImage()
+{
+    struct Image image;
+
     FILE *inputImage = fopen("/home/dmacs/Desktop/MTech/103P/image.bmp", "rb");
     if (inputImage == NULL)
     {
         printf("Error opening the input image.\n");
-        return 1;
+        exit;
     }
 
-    // Read BMP header
     uint8_t bmpHeader[54]; // BMP header is typically 54 bytes in size for standard BMP files
-    // verify that the file is a valid BMP file
     if (fread(bmpHeader, 1, 54, inputImage) != 54 || bmpHeader[0] != 'B' || bmpHeader[1] != 'M')
-    {
+    { // verify that the file is a valid BMP file
         printf("Invalid BMP file.\n");
         fclose(inputImage);
-        return 1;
+        exit;
     }
 
-    // Read image dimensions
-    int width = *((int *)&bmpHeader[18]);
-    int height = *((int *)&bmpHeader[22]);
+    image.width = *((int *)&bmpHeader[18]);
+    image.height = *((int *)&bmpHeader[22]);
+    image.size = image.width * image.height * 3; // Calculate total image size in bytes
 
-    // The size is calculated as width x height x 3 since it's assumed that the image is in 24-bit color format (3 bytes per pixel)
-    // Calculate total image size in bytes
-    int imageSize = width * height * 3;
-
-    // Read image data
-    uint8_t *imageData = (uint8_t *)malloc(imageSize);
-    if (imageData == NULL)
+    // Allocate memory for imageData
+    image.imageData = (uint8_t *)malloc(image.size);
+    if (image.imageData == NULL)
     {
         printf("Memory allocation error.\n");
         fclose(inputImage);
-        return 1;
+        exit;
     }
 
     // It reads the image data from the input BMP file into the allocated memory.
     //  If there is an error reading the data, it prints an error message and exits with an error code.
-    if (fread(imageData, 1, imageSize, inputImage) != imageSize)
+    if (fread(image.imageData, 1, image.size, inputImage) != image.size)
     {
         printf("Error reading image data.\n");
         fclose(inputImage);
-        free(imageData);
-        return 1;
     }
+    return image;
+}
 
-    int num_rows = 2; // Number of rows for the grid
-    int num_cols = 2; // Number of columns for the grid
+struct Image breakImage(struct Image image)
+{
+    int small_height = image.height / ROWS;
+    int small_width = image.width / COLS;
 
-    int small_height = height / num_rows;
-    int small_width = width / num_cols;
-
-    // to iterate through each cell in the grid. For each cell, it calculates
-    //  the coordinates of the top-left corner, generates a
-    //  filename based on the position, and calls the saveSubImage function to
-    //   save the corresponding portion of the original image as a BMP file.
-    for (int i = 0; i < num_rows; i++)
+    for (int i = 0; i < ROWS; i++)
     {
-        for (int j = 0; j < num_cols; j++)
+        for (int j = 0; j < COLS; j++)
         {
             // Calculate the coordinates for the top-left corner of the small image
             int x = j * small_width;
@@ -291,35 +226,148 @@ int main()
             snprintf(filename, sizeof(filename), "output_%d_%d.bmp", i, j);
 
             // Save the small image portion
-            saveSubImage(imageData, width, height, x, y, small_width, small_height, filename);
+            saveSubImage(image.imageData, image.width, image.height, x, y, small_width, small_height, filename);
 
             printf("Saved %s\n", filename);
         }
     }
+}
 
-    free(imageData);
+void *reconstructImage(int num_rows, int num_cols, int small_width, int small_height)
+{
+    // Calculate the dimensions of the original image
+    int width = num_cols * small_width;
+    int height = num_rows * small_height;
 
-    // send these images to different processes
-    // receive them back
+    // Calculate the total image size in bytes
+    int imageSize = width * height * 3; // Assuming 24-bit color (3 bytes per pixel)
 
-    // Reconstruct the original image
-    uint8_t *reconstructedImageData = reconstructImage(num_rows, num_cols, small_width, small_height);
+    // Allocate memory for the reconstructed image
+    uint8_t *reconstructedImageData = (uint8_t *)malloc(imageSize);
 
+    if (reconstructedImageData == NULL)
+    {
+        printf("Memory allocation error for reconstructed image.\n");
+        return NULL;
+    }
+
+    // Initialize the reconstructed image to all zeros
+    for (int i = 0; i < imageSize; i++)
+    {
+        reconstructedImageData[i] = 0;
+    }
+
+    // Iterate through the broken images and copy their data to the reconstructed image
+    for (int j = num_cols - 1; j >= 0; j--)
+    {
+        for (int i = num_rows - 1; i >= 0; i--)
+        {
+            // Calculate the coordinates for the top-left corner of the small image
+            int x = i * small_width;
+            int y = j * small_height;
+
+            // Generate the filename for the broken image
+            char filename[100];
+            snprintf(filename, sizeof(filename), "output_%d_%d.bmp", j, i);
+
+            // Open the broken image file for reading
+            FILE *brokenImage = fopen(filename, "rb");
+            if (brokenImage == NULL)
+            {
+                printf("Error opening %s for reading.\n", filename);
+                free(reconstructedImageData);
+                return NULL;
+            }
+
+            // Skip the BMP header (first 54 bytes)
+            fseek(brokenImage, 54, SEEK_SET);
+
+            // Read and copy the pixel data from the broken image to the reconstructed image row by row
+            for (int h = 0; h < small_height; h++)
+            {
+                fread(reconstructedImageData + ((y + h) * width + x) * 3, 1, small_width * 3, brokenImage);
+
+                // Pad rows to be multiples of 4 bytes in the broken image
+                for (int pad = 0; pad < (4 - (small_width * 3) % 4) % 4; pad++)
+                {
+                    fgetc(brokenImage);
+                }
+            }
+
+            // Close the broken image file
+            fclose(brokenImage);
+        }
+    }
     if (reconstructedImageData != NULL)
     {
         // Define the filename for the reconstructed image
         const char *reconstructedFilename = "reconstructed_image.bmp";
 
         // Save the reconstructed image as a BMP file
-        saveImageAsBMP(reconstructedImageData, num_cols * small_width, num_rows * small_height, reconstructedFilename);
+        saveImageAsBMP(reconstructedImageData, ROWS * small_width, COLS * small_height, reconstructedFilename);
 
         printf("Reconstructed image saved as %s\n", reconstructedFilename);
 
         // Free the memory allocated for the reconstructed image
         free(reconstructedImageData);
     }
+}
+int main()
+{
+    // setup MPI
+    MPI_Init(NULL, NULL);
+    int world_size, world_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-    // After reading the BMP image data, it closes the input file.
-    fclose(inputImage);
+    struct Image image;
+    image = readImage();
+
+    if (world_rank == 0)
+    {
+        breakImage(image);
+
+        for (int i = 0; i < ROWS; i++)
+        {
+            for (int j = 0; j < COLS; j++)
+            {
+                // Generate a filename based on the position
+                char filename[100];
+                snprintf(filename, sizeof(filename), "output_%d_%d.bmp", i, j);
+                FILE *image = fopen(filename, "rb");
+
+                // Determine the size of the BMP file
+                fseek(image, 0, SEEK_END);
+                long file_size = ftell(image);
+                fseek(image, 0, SEEK_SET);
+
+                // Allocate a buffer to store the file data
+                char *file_data = (char *)malloc(file_size);
+
+                // Read the file data into the buffer
+                fread(file_data, 1, file_size, image);
+                fclose(image);
+
+                // Send the file name and file data to the corresponding process
+                MPI_Send(filename, strlen(filename) + 1, MPI_CHAR, (i * ROWS + j) % (world_size - 1) + 1, 0, MPI_COMM_WORLD);
+                MPI_Send(&file_size, 1, MPI_LONG, (i * COLS + j) % (world_size - 1) + 1, 0, MPI_COMM_WORLD); // Send file size
+                MPI_Send(file_data, file_size, MPI_CHAR, (i * COLS + j) % (world_size - 1) + 1, 0, MPI_COMM_WORLD);
+
+                free(file_data);
+            }
+        }
+    }
+    else
+    {
+        receiveImagebyProcesses();
+    }
+
+    if (world_rank == 0)
+    {
+        // Reconstruct the original image
+        reconstructImage(ROWS, COLS, image.width / COLS, image.height / ROWS);
+    }
+
+    MPI_Finalize();
     return 0;
 }

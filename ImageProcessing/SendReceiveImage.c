@@ -43,7 +43,6 @@ int main(int argc, char **argv)
     // Send the file data from the sender process to the receiver process
     if (world_rank == 0)
     {
-        // Sender process
         MPI_Send(file_data, file_size, MPI_CHAR, 3, 0, MPI_COMM_WORLD);
     }
     else if (world_rank == 3)
