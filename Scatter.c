@@ -14,16 +14,14 @@ int main(int argc, char **argv)
     char filename[100];
     FILE *image;
     long file_size;
-    char *file_data = NULL,*received_data = NULL;
+    char *file_data = NULL, *received_data = NULL;
 
-    if (world_rank == 0)
+    if (world_rank == 0) // Process 0 reads the input image
     {
-        // Process 0 reads the input image
         snprintf(filename, sizeof(filename), "Images/image.bmp");
         image = fopen(filename, "rb");
 
-        // Check if the file exists
-        if (image == NULL)
+        if (image == NULL) // Check if the file exists
         {
             printf("Input image not found.\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
@@ -34,18 +32,15 @@ int main(int argc, char **argv)
         file_size = ftell(image);
         fseek(image, 0, SEEK_SET);
 
-        // Check if the file size exceeds the maximum limit
-        if (file_size > MAX_FILE_SIZE)
+        if (file_size > MAX_FILE_SIZE) // Check if the file size exceeds the maximum limit
         {
             printf("File size exceeds the maximum limit.\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
 
-        // Allocate a buffer to store the file data
-        file_data = (char *)malloc(file_size);
+        file_data = (char *)malloc(file_size); // Allocate a buffer to store the file data
 
-        // Read the file data into the buffer
-        fread(file_data, 1, file_size, image);
+        fread(file_data, 1, file_size, image); // Read the file data into the buffer
         fclose(image);
     }
 
@@ -62,7 +57,7 @@ int main(int argc, char **argv)
     MPI_Scatter(file_data, portion_size, MPI_CHAR, received_data, portion_size, MPI_CHAR, 0, MPI_COMM_WORLD);
     printf("Scatter complete on process %d!\n", world_rank);
 
-    // Create a unique filename for the scattered image portion
+    // Create a filename for the scattered image portion
     snprintf(filename, sizeof(filename), "ReceivedImages/Portion%d.bmp", world_rank);
     FILE *output_part = fopen(filename, "wb");
     fwrite(received_data, 1, portion_size, output_part);
@@ -74,7 +69,7 @@ int main(int argc, char **argv)
 
     if (world_rank == 0)
     {
-        // Process 0 saves or processes the gathered data
+        // Process 0 saves
         FILE *output_image = fopen("gathered_image.bmp", "wb");
         fwrite(file_data, 1, file_size, output_image);
         fclose(output_image);
