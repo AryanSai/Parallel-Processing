@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 
     if (world_rank == 0) // Process 0 reads the input image
     {
-        snprintf(filename, sizeof(filename), "Images/image.bmp");
+        snprintf(filename, sizeof(filename), "/home/mpiuser/cloud/image.bmp");
         image = fopen(filename, "rb");
 
         if (image == NULL) // Check if the file exists

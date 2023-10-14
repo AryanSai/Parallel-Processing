@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     int threads = atoi(argv[2]);
 
     srand(time(0));
-    double start, end, parallel_time = 0.0, startt, endd, seq_time, total_time;
+    double start, end, parallel_time = 0.0, seq_time, total_time;
 
     start = omp_get_wtime();
     // create the grid
@@ -123,15 +123,14 @@ int main(int argc, char *argv[])
     while (saturation == 0 && threshold < 100)
     {
         int changes = 0; // Initialize the changes flag for this iteration
+
+        double startt = omp_get_wtime(); // Start the timer for parallel section
 #pragma omp parallel for schedule(dynamic, 10) collapse(2) num_threads(threads)
         for (int i = 0; i < N; i++)
         {
             for (int j = 0; j < N; j++)
             {
-                startt = omp_get_wtime();
                 gameOfLife(grid, newGrid, N, threads, i, j);
-                endd = omp_get_wtime();
-                parallel_time += (endd - startt);
                 // Check if the cell's state changed
                 if (grid[i][j] != newGrid[i][j])
                 {
@@ -139,11 +138,14 @@ int main(int argc, char *argv[])
                 }
             }
         }
+        double endt = omp_get_wtime(); // End the timer for parallel section
+        parallel_time += (endt - startt); // Accumulate parallel execution time
 
         if (changes == 0)
         {
             saturation = 1; // No changes occurred, simulation is saturated
         }
+
         // Update the original grid with the new state
         for (int i = 0; i < N; i++)
         {
@@ -152,19 +154,21 @@ int main(int argc, char *argv[])
                 grid[i][j] = newGrid[i][j];
             }
         }
+
         threshold++;
         system("clear"); // Clear the terminal
-        // printf("---Game of Life---");
-        // printGrid(grid, N);
         usleep(50000);
     }
     end = omp_get_wtime();
-    seq_time = end - start - parallel_time;
+
+    seq_time = end - start - parallel_time; // Calculate sequential time
     total_time = end - start;
+
     printf("The total run-time is %lf\n", total_time);
     printf("The parallel run-time is %lf\n", parallel_time);
     printf("The sequential run-time is %lf\n", seq_time);
     printf("---Game Ended---");
+
     // Free allocated memory
     freeGrid(grid, N);
     freeGrid(newGrid, N);
