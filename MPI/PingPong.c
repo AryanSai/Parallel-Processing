@@ -1,8 +1,8 @@
-// Ping pong example with MPI_Send and MPI_Recv. Two processes ping pong a
-// number back and forth, incrementing it until it reaches a given value.
-//
+// Ping pong Game
+// Two processes ping pong a number back and forth, incrementing it until it reaches a given value.
 
 // mpirun -np 2 ./a.out
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +14,9 @@ int main(int argc, char **argv)
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
     // Find out rank, size
-    int world_rank ;
+    int world_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    int world_size ;
+    int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // We are assuming 2 processes for this task

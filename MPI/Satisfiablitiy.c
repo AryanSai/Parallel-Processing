@@ -1,18 +1,6 @@
 #include <mpi.h>
 #include <stdio.h>
 
-/*
- * Circuit Satisfiability, Version 3
- *
- * This MPI program determines whether a cricuit is
- * satisfiable, that is, whether there is a combination of
- * inputs that causes the output of the circuit to be 1.
- * The particular circuit being tested is 'wired' into the
- * logic of function 'check_circuit'. All combinations of
- * inputs that satisfy the circuit are printed.
- */
-
-/* Return 1 if 'i'th bit of 'n' is 1; 0 otherwise */
 #define EXTRACT_BIT(n, i) ((n & (1 << i)) ? 1 : 0)
 
 int check_circuit(int id, int z)
