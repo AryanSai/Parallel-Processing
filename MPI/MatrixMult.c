@@ -4,18 +4,11 @@
 #include <time.h>
 #include <sys/time.h>
 
-/*
-  In here 'process o' which distribute the workload to other processes is considered
-  as Root (Master) process and other processes which do the computation is considered
-  as Slave task processes.
-*/
-
 // Number of rows and columnns in a matrix
 #define N 4
 
 MPI_Status status;
 
-// Matrix holders are created
 double matrix_a[N][N], matrix_b[N][N], matrix_c[N][N];
 
 int main(int argc, char **argv)

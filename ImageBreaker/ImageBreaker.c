@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 
     if (world_rank == 0) // Process 0 reads the input image
     {
-        snprintf(filename, sizeof(filename), "Images/image.bmp");
+        snprintf(filename, sizeof(filename), "/home/dmacs/Desktop/MTech/103P/ImageBreaker/image.bmp");
         image = fopen(filename, "rb");
 
         if (image == NULL) // Check if the file exists
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     if (world_rank == 0)
     {
         // Process 0 saves
-        FILE *output_image = fopen("gathered_image.bmp", "wb");
+        FILE *output_image = fopen("Gathered_Image.bmp", "wb");
         fwrite(file_data, 1, file_size, output_image);
         fclose(output_image);
 
